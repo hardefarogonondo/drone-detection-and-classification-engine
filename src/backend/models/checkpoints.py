@@ -9,6 +9,27 @@ from src.backend.config.detector_config import DetectorConfig
 from src.backend.models.s8_cfd import S8CFD
 
 
+CHECKPOINT_SCHEMA_VERSION = 2
+
+
+def normalize_checkpoint_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return a backward-compatible checkpoint payload with metadata defaults."""
+    if "model_state_dict" not in payload:
+        raise KeyError("Checkpoint is missing required key: model_state_dict")
+    payload.setdefault("optimizer_state_dict", None)
+    payload.setdefault("config", {})
+    payload.setdefault("checkpoint_schema_version", 1)
+    metadata = payload.get("metadata")
+    if not isinstance(metadata, dict):
+        metadata = {}
+    metadata.setdefault("checkpoint_schema_version", payload.get("checkpoint_schema_version", 1))
+    metadata.setdefault("epoch", payload.get("epoch"))
+    metadata.setdefault("metric_name", payload.get("metric_name"))
+    metadata.setdefault("metric_value", payload.get("metric_value"))
+    payload["metadata"] = metadata
+    return payload
+
+
 def save_checkpoint(
     path: str | Path,
     *,
@@ -18,16 +39,26 @@ def save_checkpoint(
     metric_name: str,
     metric_value: float,
     config: dict[str, Any],
+    metadata: dict[str, Any] | None = None,
 ) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    merged_metadata = {
+        "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
+        "epoch": epoch,
+        "metric_name": metric_name,
+        "metric_value": metric_value,
+        **(metadata or {}),
+    }
     payload = {
+        "checkpoint_schema_version": CHECKPOINT_SCHEMA_VERSION,
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict() if optimizer is not None else None,
         "epoch": epoch,
         "metric_name": metric_name,
         "metric_value": metric_value,
         "config": config,
+        "metadata": merged_metadata,
     }
     torch.save(payload, path)
 
@@ -37,6 +68,7 @@ def load_checkpoint(path: str | Path, model: S8CFD, *, map_location: str | torch
     if not path.exists():
         raise FileNotFoundError(path)
     payload = torch.load(path, map_location=map_location)
+    payload = normalize_checkpoint_payload(payload)
     model.load_state_dict(payload["model_state_dict"])
     return payload
 

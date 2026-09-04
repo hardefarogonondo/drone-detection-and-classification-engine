@@ -5,6 +5,7 @@ import csv
 import json
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -96,6 +97,61 @@ def _run_metadata(config: AppConfig, device: torch.device, model: S8CFD | None =
         "split_grouping": split_group_summary(),
         "best_checkpoint_metric": "val_map50_95",
     }
+
+
+def _optimizer_metadata(optimizer: torch.optim.Optimizer) -> dict[str, Any]:
+    return {
+        "name": optimizer.__class__.__name__,
+        "param_groups": [
+            {key: value for key, value in group.items() if key != "params"}
+            for group in optimizer.param_groups
+        ],
+    }
+
+
+def _checkpoint_metadata(
+    *,
+    config: AppConfig,
+    model: S8CFD,
+    optimizer: torch.optim.Optimizer,
+    checkpoint_kind: str,
+    epoch: int,
+    metric_name: str,
+    current_metric_value: float,
+    best_metric_value: float,
+    best_epoch: int | None,
+) -> dict[str, Any]:
+    return {
+        "checkpoint_kind": checkpoint_kind,
+        "run_name": config.run_name,
+        "model_name": config.model_name,
+        "parameter_count": count_trainable_parameters(model),
+        "input_resolution": [DEFAULT_DETECTOR_CONFIG.input_width, DEFAULT_DETECTOR_CONFIG.input_height],
+        "stride": DEFAULT_DETECTOR_CONFIG.stride,
+        "optimizer": _optimizer_metadata(optimizer),
+        "seed": config.seed,
+        "training_config": config.as_log_dict(),
+        "selected_metric": metric_name,
+        "current_metric_value": current_metric_value,
+        "best_metric_value": best_metric_value,
+        "best_epoch": best_epoch,
+        "epoch": epoch,
+    }
+
+
+def _resume_best_state(payload: dict[str, Any]) -> tuple[float, int | None]:
+    metadata = payload.get("metadata", {})
+    best_value = metadata.get("best_metric_value")
+    best_epoch = metadata.get("best_epoch")
+    if best_value is None:
+        best_value = payload.get("metric_value", float("-inf"))
+    if best_epoch is None and metadata.get("checkpoint_kind") == "best":
+        best_epoch = payload.get("epoch")
+    return float(best_value), int(best_epoch) if best_epoch is not None else None
+
+
+def _is_improved(current_metric_value: float, best_metric_value: float) -> bool:
+    return current_metric_value >= best_metric_value
 
 
 def _evaluate(model: S8CFD, loader: DataLoader, device: torch.device, config: AppConfig, *, epoch: int) -> dict[str, float]:
@@ -214,15 +270,6 @@ def train(config: AppConfig) -> dict[str, Any]:
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     write_json(run_dir / "config.json", _run_metadata(config, device, model))
 
-    start_epoch = 0
-    latest_path = model_path.parent / "latest.pt"
-    if config.resume and latest_path.exists():
-        payload = load_checkpoint(latest_path, model, map_location=device)
-        if payload.get("optimizer_state_dict") is not None:
-            optimizer.load_state_dict(payload["optimizer_state_dict"])
-        start_epoch = int(payload.get("epoch", 0)) + 1
-        print(f"Resumed from {latest_path} at epoch {start_epoch}")
-
     print(f"Train batches: {len(train_loader)} | Val batches: {len(val_loader)}")
     print(f"Trainable parameters: {count_trainable_parameters(model):,}")
 
@@ -246,6 +293,15 @@ def train(config: AppConfig) -> dict[str, Any]:
     epochs_without_improvement = 0
     metric_name = "val_map50_95"
     checkpoint_config = _run_metadata(config, device, model)
+    start_epoch = 0
+    latest_path = model_path.parent / "latest.pt"
+    if config.resume and latest_path.exists():
+        payload = load_checkpoint(latest_path, model, map_location=device)
+        if payload.get("optimizer_state_dict") is not None:
+            optimizer.load_state_dict(payload["optimizer_state_dict"])
+        start_epoch = int(payload.get("epoch", 0)) + 1
+        best_metric, best_epoch = _resume_best_state(payload)
+        print(f"Resumed from {latest_path} at epoch {start_epoch}; best {metric_name}={best_metric:.6f} at epoch {best_epoch}")
     for epoch in range(start_epoch, config.train_epochs):
         reset_cuda_peak_memory(device)
         epoch_start = time.time()
@@ -299,19 +355,10 @@ def train(config: AppConfig) -> dict[str, Any]:
         }
         history.append(epoch_record)
         print(json.dumps(epoch_record, indent=2))
-        save_checkpoint(
-            latest_path,
-            model=model,
-            optimizer=optimizer,
-            epoch=epoch,
-            metric_name=metric_name,
-            metric_value=epoch_record[metric_name],
-            config=checkpoint_config,
-            metadata={"selected_metric": metric_name, "best_epoch": best_epoch, "checkpoint_kind": "latest"},
-        )
-        improved = epoch_record[metric_name] >= best_metric
+        current_metric = float(epoch_record[metric_name])
+        improved = _is_improved(current_metric, best_metric)
         if improved:
-            best_metric = epoch_record[metric_name]
+            best_metric = current_metric
             best_epoch = epoch
             epochs_without_improvement = 0
             save_checkpoint(
@@ -322,10 +369,40 @@ def train(config: AppConfig) -> dict[str, Any]:
                 metric_name=metric_name,
                 metric_value=best_metric,
                 config=checkpoint_config,
-                metadata={"selected_metric": metric_name, "best_epoch": best_epoch, "checkpoint_kind": "best"},
+                metadata=_checkpoint_metadata(
+                    config=config,
+                    model=model,
+                    optimizer=optimizer,
+                    checkpoint_kind="best",
+                    epoch=epoch,
+                    metric_name=metric_name,
+                    current_metric_value=current_metric,
+                    best_metric_value=best_metric,
+                    best_epoch=best_epoch,
+                ),
             )
         else:
             epochs_without_improvement += 1
+        save_checkpoint(
+            latest_path,
+            model=model,
+            optimizer=optimizer,
+            epoch=epoch,
+            metric_name=metric_name,
+            metric_value=current_metric,
+            config=checkpoint_config,
+            metadata=_checkpoint_metadata(
+                config=config,
+                model=model,
+                optimizer=optimizer,
+                checkpoint_kind="latest",
+                epoch=epoch,
+                metric_name=metric_name,
+                current_metric_value=current_metric,
+                best_metric_value=best_metric,
+                best_epoch=best_epoch,
+            ),
+        )
         if wandb_run is not None:
             wandb_run.log(epoch_record, step=epoch)
         if config.early_stopping_patience is not None and epochs_without_improvement >= config.early_stopping_patience:
@@ -365,9 +442,9 @@ def main() -> None:
             print(json.dumps(config.as_log_dict(), indent=2))
             return
         train(config)
-    except Exception as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        raise SystemExit(1) from exc
+    except Exception:
+        traceback.print_exc()
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
