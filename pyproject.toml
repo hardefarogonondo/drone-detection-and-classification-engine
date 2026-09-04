@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drone-detection-and-classification-engine"
+version = "0.1.0"
+description = "Custom from-scratch drone detection and classification engine."
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "numpy>=2.4,<3.0",
+    "pillow>=12,<13",
+    "torch==2.14.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ipykernel>=6",
+    "matplotlib>=3.8",
+    "nbclient>=0.10",
+    "nbformat>=5.10",
+    "pandas>=2.2",
+    "pytest>=8",
+    "seaborn>=0.13",
+]
+tracking = [
+    "wandb>=0.17",
+]
+
+[project.scripts]
+drone-train = "src.backend.cli.train:main"
+drone-infer = "src.backend.cli.infer:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

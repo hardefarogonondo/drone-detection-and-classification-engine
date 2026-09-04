@@ -1,0 +1,68 @@
+# =========================
+# OS & Environment
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDEs & Editor Tools
+# =========================
+.idea/
+.kilo/
+.vscode/
+
+# =========================
+# Python & Virtual Env
+# =========================
+*.egg-info/
+.pdm-build/
+.ruff_cache/
+wheels/
+.venv/
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+.pdm-python
+
+# =========================
+# Node / PM2
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pm2/
+dump.pm2
+
+# =========================
+# Testing & Coverage
+# =========================
+.ipynb_checkpoints/
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# =========================
+# Project Runtime Artifacts
+# =========================
+data/obj_det_base/
+data/**/*.zip
+data/**/*.tar
+data/**/*.tar.gz
+data/**/*.tgz
+data/**/*.7z
+models/checkpoints/
+reports/predictions/
+wandb/
+*.wandb
+
+# =========================
+# Secrets & Configurations
+# =========================
+.aws/
+*.pem
+.env
+credentials.json

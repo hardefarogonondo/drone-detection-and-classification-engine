@@ -1,0 +1,52 @@
+services:
+  trainer:
+    build:
+      context: .
+    command: ["drone-train"]
+    environment:
+      RETRAIN: ${RETRAIN:-false}
+      DEVICE: ${DEVICE:-auto}
+      MODEL_NAME: ${MODEL_NAME:-s8_cfd}
+      MODEL_PATH: ${MODEL_PATH:-models/checkpoints/best.pt}
+      TRAIN_EPOCHS: ${TRAIN_EPOCHS:-50}
+      BATCH_SIZE: ${BATCH_SIZE:-2}
+      LEARNING_RATE: ${LEARNING_RATE:-0.001}
+      WEIGHT_DECAY: ${WEIGHT_DECAY:-0.0001}
+      NUM_WORKERS: ${NUM_WORKERS:-0}
+      TRAIN_LIMIT: ${TRAIN_LIMIT:-}
+      VAL_LIMIT: ${VAL_LIMIT:-}
+      RESUME: ${RESUME:-false}
+      CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.30}
+      NMS_IOU_THRESHOLD: ${NMS_IOU_THRESHOLD:-0.50}
+      WANDB_ENABLED: ${WANDB_ENABLED:-false}
+      WANDB_PROJECT: ${WANDB_PROJECT:-drone-detection-and-classification-engine}
+      ALLOW_TEST_INFERENCE: "false"
+      SEED: ${SEED:-42}
+    volumes:
+      - ./data:/app/data:ro
+      - ./models:/app/models
+      - ./reports:/app/reports
+
+  inferencer:
+    build:
+      context: .
+    command: ["drone-infer"]
+    depends_on:
+      trainer:
+        condition: service_completed_successfully
+    environment:
+      DEVICE: ${DEVICE:-auto}
+      MODEL_NAME: ${MODEL_NAME:-s8_cfd}
+      MODEL_PATH: ${MODEL_PATH:-models/checkpoints/best.pt}
+      NUM_WORKERS: ${NUM_WORKERS:-0}
+      INFERENCE_SPLIT: ${INFERENCE_SPLIT:-val}
+      INFERENCE_LIMIT: ${INFERENCE_LIMIT:-20}
+      CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.30}
+      NMS_IOU_THRESHOLD: ${NMS_IOU_THRESHOLD:-0.50}
+      SAVE_PREDICTIONS: ${SAVE_PREDICTIONS:-true}
+      ALLOW_TEST_INFERENCE: ${ALLOW_TEST_INFERENCE:-false}
+      SEED: ${SEED:-42}
+    volumes:
+      - ./data:/app/data:ro
+      - ./models:/app/models:ro
+      - ./reports:/app/reports

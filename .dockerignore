@@ -1,0 +1,13 @@
+.git
+.DS_Store
+.env
+.venv
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+data/obj_det_base/
+models/checkpoints/
+reports/predictions/
+reports/figures/
+notebooks/
