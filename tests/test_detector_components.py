@@ -5,11 +5,19 @@ import math
 import torch
 
 from src.backend.config.detector_config import DEFAULT_DETECTOR_CONFIG, DetectorConfig
+from src.backend.config.settings import AppConfig
+from src.backend.data.loaders import data_loader_kwargs
 from src.backend.data.preprocessing import CoordinateTransform
 from src.backend.data.targets import decode_prediction_map, decode_target_map, encode_anchor_free_targets
 from src.backend.models.boxes import box_iou_xyxy, nms_xyxy, xywh_to_xyxy
+from src.backend.models.inference import postprocess_predictions
 from src.backend.models.losses import S8CFDLoss
-from src.backend.models.metrics import gt_size_category_from_original_dimensions, recall_by_original_size_category
+from src.backend.models.metrics import (
+    average_precision,
+    evaluate_at_confidence_threshold,
+    gt_size_category_from_original_dimensions,
+    recall_by_original_size_category,
+)
 from src.backend.models.s8_cfd import S8CFD
 from src.backend.models.training_utils import finite_gradients
 
@@ -138,3 +146,52 @@ def test_original_size_category_and_recall_breakdown() -> None:
     recall = recall_by_original_size_category(pred_boxes, pred_scores, gt_boxes, gt_wh)
     assert recall["lt16px"] == 1.0
     assert recall["ge64px"] == 0.0
+
+
+def test_ap_uses_ranked_predictions_not_operating_threshold() -> None:
+    gt_boxes = [torch.tensor([[0.0, 0.0, 1.0, 1.0]], dtype=torch.float32)]
+    pred_boxes = [torch.tensor([[2.0, 2.0, 3.0, 3.0], [0.0, 0.0, 1.0, 1.0]], dtype=torch.float32)]
+    pred_scores = [torch.tensor([0.9, 0.2], dtype=torch.float32)]
+
+    ap_with_all_candidates = average_precision(pred_boxes, pred_scores, gt_boxes, iou_threshold=0.5)
+    filtered = pred_scores[0] >= 0.3
+    ap_after_operating_filter = average_precision([pred_boxes[0][filtered]], [pred_scores[0][filtered]], gt_boxes, iou_threshold=0.5)
+    operating = evaluate_at_confidence_threshold(
+        pred_boxes,
+        pred_scores,
+        gt_boxes,
+        confidence_threshold=0.3,
+    )
+
+    assert ap_with_all_candidates > 0.0
+    assert ap_after_operating_filter == 0.0
+    assert operating.true_positives == 0.0
+    assert operating.false_positives == 1.0
+
+
+def test_dataloader_cuda_auto_settings() -> None:
+    config = AppConfig(num_workers=2)
+    kwargs = data_loader_kwargs(config, torch.device("cuda"), shuffle=False)
+    assert kwargs["pin_memory"] is True
+    assert kwargs["persistent_workers"] is True
+    assert kwargs["prefetch_factor"] == 2
+
+
+def test_dataloader_cpu_default_settings() -> None:
+    config = AppConfig(num_workers=0)
+    kwargs = data_loader_kwargs(config, torch.device("cpu"), shuffle=False)
+    assert kwargs["pin_memory"] is False
+    assert "persistent_workers" not in kwargs
+    assert "prefetch_factor" not in kwargs
+
+
+def test_postprocess_prediction_diagnostics() -> None:
+    config = DEFAULT_DETECTOR_CONFIG
+    predictions = torch.zeros((1, 5, config.grid_height, config.grid_width), dtype=torch.float32)
+    results = postprocess_predictions(predictions, config, confidence_threshold=0.25, top_k=10, max_detections=5)
+    assert len(results) == 1
+    assert results[0].raw_prediction_count == config.grid_height * config.grid_width
+    assert results[0].valid_prediction_count == config.grid_height * config.grid_width
+    assert results[0].score_filtered_count == config.grid_height * config.grid_width
+    assert results[0].nms_candidate_count == 10
+    assert results[0].scores.numel() <= 5

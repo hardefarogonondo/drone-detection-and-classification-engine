@@ -11,6 +11,7 @@ requires-python = ">=3.11,<3.14"
 dependencies = [
     "numpy>=2.4,<3.0",
     "pillow>=12,<13",
+    "tqdm>=4.66",
     "torch==2.14.0",
 ]
 
@@ -31,6 +32,7 @@ tracking = [
 [project.scripts]
 drone-train = "src.backend.cli.train:main"
 drone-infer = "src.backend.cli.infer:main"
+drone-benchmark-data = "src.backend.cli.benchmark_data:main"
 
 [tool.uv.sources]
 torch = [

@@ -9,5 +9,6 @@ __pycache__/
 data/obj_det_base/
 models/checkpoints/
 reports/predictions/
+reports/runs/
 reports/figures/
 notebooks/

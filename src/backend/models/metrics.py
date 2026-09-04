@@ -17,6 +17,17 @@ class DetectionMetrics:
     map50_95: float
 
 
+@dataclass(frozen=True)
+class OperatingPointMetrics:
+    precision: float
+    recall: float
+    f1: float
+    true_positives: float
+    false_positives: float
+    false_negatives: float
+    predictions: float
+
+
 def gt_size_category_from_original_dimensions(width_px: float, height_px: float) -> str:
     """Classify GT size using original 2560x1440 dimensions for ablation-invariant reporting."""
     min_dim = min(width_px, height_px)
@@ -166,4 +177,39 @@ def evaluate_single_class_detections(
         ap50=aps[0.50],
         ap75=aps[0.75],
         map50_95=sum(aps.values()) / len(aps),
+    )
+
+
+def evaluate_at_confidence_threshold(
+    pred_boxes_by_image: list[torch.Tensor],
+    pred_scores_by_image: list[torch.Tensor],
+    gt_boxes_by_image: list[torch.Tensor],
+    *,
+    confidence_threshold: float,
+    iou_threshold_for_pr: float = 0.5,
+) -> OperatingPointMetrics:
+    total_tp = 0.0
+    total_fp = 0.0
+    total_predictions = 0.0
+    total_gt = sum(boxes.shape[0] for boxes in gt_boxes_by_image)
+    for boxes, scores, gt_boxes in zip(pred_boxes_by_image, pred_scores_by_image, gt_boxes_by_image):
+        keep = scores >= confidence_threshold
+        filtered_boxes = boxes[keep]
+        filtered_scores = scores[keep]
+        tp, fp = match_detections(filtered_boxes, filtered_scores, gt_boxes, iou_threshold_for_pr)
+        total_tp += float(tp.sum().item())
+        total_fp += float(fp.sum().item())
+        total_predictions += float(filtered_scores.numel())
+    false_negatives = max(float(total_gt) - total_tp, 0.0)
+    precision = total_tp / max(total_tp + total_fp, 1e-8)
+    recall = total_tp / max(total_gt, 1e-8)
+    f1 = 2 * precision * recall / max(precision + recall, 1e-8)
+    return OperatingPointMetrics(
+        precision=precision,
+        recall=recall,
+        f1=f1,
+        true_positives=total_tp,
+        false_positives=total_fp,
+        false_negatives=false_negatives,
+        predictions=total_predictions,
     )

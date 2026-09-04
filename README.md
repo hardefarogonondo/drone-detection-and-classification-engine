@@ -79,11 +79,19 @@ override defaults.
 Useful smoke-test values:
 
 ```bash
+RUN_NAME=smoke-s8-cfd
 TRAIN_EPOCHS=1
 TRAIN_LIMIT=2
 VAL_LIMIT=2
 BATCH_SIZE=1
 INFERENCE_LIMIT=2
+```
+
+Run-specific artifacts are written under:
+
+```text
+models/checkpoints/<run_name>/
+reports/runs/<run_name>/
 ```
 
 ## Training
@@ -103,11 +111,39 @@ data/splits/val.txt
 Checkpoints and history are written under:
 
 ```text
-models/checkpoints/
+models/checkpoints/<run_name>/
 ```
+
+`best.pt` is selected by validation `mAP@0.50:0.95` (`val_map50_95`).
+Precision, recall, and F1 are reported at the configured operating threshold,
+while AP is computed from a low evaluation candidate floor.
+
+Training and validation use compact `tqdm` progress bars by default. Set
+`PROGRESS=false` for quieter logs in headless jobs. CUDA runs also report GPU
+name, epoch duration, throughput, and peak allocated/reserved memory from
+PyTorch CUDA APIs.
+
+The approved baseline keeps fixed learning rate training with
+`LR_SCHEDULER=none`. `EARLY_STOPPING_PATIENCE` is available for future
+experiments but is empty by default.
 
 If `RETRAIN=false`, the trainer verifies `MODEL_PATH` exists and exits successfully
 without training. This is useful for Docker Compose orchestration.
+
+## DataLoader Benchmark
+
+The default `NUM_WORKERS=0` is conservative. On Windows CUDA, benchmark a few
+settings before a long run:
+
+```powershell
+$env:DEVICE="cuda"; $env:RUN_NAME="dataloader-workers-0"; $env:NUM_WORKERS="0"; uv run drone-benchmark-data --split train --batches 100
+$env:DEVICE="cuda"; $env:RUN_NAME="dataloader-workers-2"; $env:NUM_WORKERS="2"; uv run drone-benchmark-data --split train --batches 100
+$env:DEVICE="cuda"; $env:RUN_NAME="dataloader-workers-4"; $env:NUM_WORKERS="4"; uv run drone-benchmark-data --split train --batches 100
+```
+
+`PIN_MEMORY=auto` enables pinned host memory only for CUDA. `PERSISTENT_WORKERS=auto`
+uses persistent workers when `NUM_WORKERS>0`. `PREFETCH_FACTOR=2` is used only
+when worker processes are enabled.
 
 ## Validation Inference
 
@@ -119,7 +155,7 @@ INFERENCE_SPLIT=val INFERENCE_LIMIT=20 uv run drone-infer
 Outputs are written to:
 
 ```text
-reports/predictions/<split>/
+reports/runs/<run_name>/predictions/<split>/
 ```
 
 including:
@@ -129,6 +165,19 @@ metrics.json
 predictions.csv
 index.html
 rendered prediction PNGs
+```
+
+Validation-only threshold analysis:
+
+```bash
+RUN_NAME=baseline-s8-cfd-960-s8 MODEL_PATH=models/checkpoints/baseline-s8-cfd-960-s8/best.pt INFERENCE_SPLIT=val THRESHOLD_ANALYSIS=true uv run drone-infer
+```
+
+This writes threshold metrics and figures under:
+
+```text
+reports/runs/<run_name>/metrics/
+reports/runs/<run_name>/figures/
 ```
 
 ## Docker Compose

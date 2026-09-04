@@ -13,6 +13,10 @@ from src.backend.models.boxes import nms_xyxy
 class DetectionResult:
     boxes_xyxy: torch.Tensor
     scores: torch.Tensor
+    raw_prediction_count: int
+    valid_prediction_count: int
+    score_filtered_count: int
+    nms_candidate_count: int
 
 
 def postprocess_predictions(
@@ -30,16 +34,39 @@ def postprocess_predictions(
     for image_boxes, image_scores in zip(boxes, scores):
         valid_size = (image_boxes[:, 2] > image_boxes[:, 0]) & (image_boxes[:, 3] > image_boxes[:, 1])
         valid_coord = torch.isfinite(image_boxes).all(dim=1) & torch.isfinite(image_scores)
+        valid_mask = valid_size & valid_coord
         keep_mask = valid_size & valid_coord & (image_scores >= confidence_threshold)
         candidate_boxes = image_boxes[keep_mask]
         candidate_scores = image_scores[keep_mask]
+        raw_prediction_count = int(image_scores.numel())
+        valid_prediction_count = int(valid_mask.sum().item())
+        score_filtered_count = int(candidate_scores.numel())
         if candidate_boxes.numel() == 0:
-            results.append(DetectionResult(candidate_boxes.reshape(0, 4), candidate_scores.reshape(0)))
+            results.append(
+                DetectionResult(
+                    candidate_boxes.reshape(0, 4),
+                    candidate_scores.reshape(0),
+                    raw_prediction_count,
+                    valid_prediction_count,
+                    score_filtered_count,
+                    0,
+                )
+            )
             continue
         if candidate_scores.numel() > top_k:
             order = candidate_scores.argsort(descending=True)[:top_k]
             candidate_boxes = candidate_boxes[order]
             candidate_scores = candidate_scores[order]
+        nms_candidate_count = int(candidate_scores.numel())
         keep = nms_xyxy(candidate_boxes, candidate_scores, iou_threshold=nms_iou_threshold, max_detections=max_detections)
-        results.append(DetectionResult(candidate_boxes[keep], candidate_scores[keep]))
+        results.append(
+            DetectionResult(
+                candidate_boxes[keep],
+                candidate_scores[keep],
+                raw_prediction_count,
+                valid_prediction_count,
+                score_filtered_count,
+                nms_candidate_count,
+            )
+        )
     return results
