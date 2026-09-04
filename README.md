@@ -39,11 +39,18 @@ PyTorch device selection is runtime-based:
 DEVICE=auto -> CUDA if available, then Apple MPS, then CPU
 ```
 
-On macOS, install the normal locked environment and let PyTorch use MPS when it
-is available. On Windows/Linux workstation environments, the normal PyTorch
-package may use CUDA when the local driver/runtime supports it. The Docker image
-is intentionally CPU-only so the container remains portable and does not pull
-CUDA wheels into a slim runtime.
+PyTorch resolution is platform-specific in `pyproject.toml`:
+
+```text
+macOS   -> native PyPI PyTorch wheel; MPS is used when available
+Windows -> official PyTorch CUDA 12.6 wheel index
+Linux   -> official PyTorch CPU wheel index
+```
+
+The Windows CUDA wheel includes the required CUDA runtime libraries, so a local
+CUDA Toolkit install is not required. The Docker image runs on Linux and uses
+the same locked dependency policy, which keeps the container CPU-only and avoids
+pulling CUDA wheels into a slim runtime.
 
 ## Local Installation
 

@@ -15,10 +15,7 @@ RUN python -m pip install --default-timeout=1000 --retries=5 uv==0.12.9
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 
-RUN uv sync --frozen --no-dev --no-install-package torch && \
-    uv pip install --python /app/.venv/bin/python \
-      --index-url https://download.pytorch.org/whl/cpu \
-      torch==2.14.0
+RUN uv sync --frozen --no-dev
 
 USER app
 
