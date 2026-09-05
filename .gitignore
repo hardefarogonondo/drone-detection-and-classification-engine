@@ -54,6 +54,9 @@ data/**/*.tar
 data/**/*.tar.gz
 data/**/*.tgz
 data/**/*.7z
+
+# Generated runtime artifacts.
+# Curated experiment results are tracked under reports/experiments/.
 models/checkpoints/
 reports/predictions/
 reports/runs/

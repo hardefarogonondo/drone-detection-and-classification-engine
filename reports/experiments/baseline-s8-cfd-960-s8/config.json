@@ -1,0 +1,100 @@
+{
+  "run_name": "baseline-s8-cfd-960-s8",
+  "retrain": true,
+  "device": "cuda",
+  "model_name": "s8_cfd",
+  "model_path": "models\\checkpoints\\baseline-s8-cfd-960-s8\\best.pt",
+  "train_epochs": 20,
+  "batch_size": 2,
+  "learning_rate": 0.001,
+  "weight_decay": 0.0001,
+  "num_workers": 4,
+  "pin_memory": "auto",
+  "persistent_workers": "auto",
+  "prefetch_factor": 2,
+  "train_limit": null,
+  "val_limit": null,
+  "resume": false,
+  "lr_scheduler": "none",
+  "early_stopping_patience": null,
+  "inference_split": "val",
+  "inference_limit": null,
+  "confidence_threshold": 0.3,
+  "eval_confidence_floor": 0.001,
+  "nms_iou_threshold": 0.5,
+  "eval_top_k": 500,
+  "max_detections": 100,
+  "save_predictions": true,
+  "threshold_analysis": false,
+  "threshold_min": 0.0,
+  "threshold_max": 0.995,
+  "threshold_step": 0.005,
+  "progress": true,
+  "wandb_enabled": true,
+  "wandb_project": "drone-detection-and-classification-engine",
+  "wandb_run_name": "baseline-s8-cfd-960-s8",
+  "wandb_tags": [
+    "baseline",
+    "s8-cfd",
+    "960x544",
+    "stride8"
+  ],
+  "allow_test_inference": false,
+  "seed": 42,
+  "detector_config": {
+    "source_width": 2560,
+    "source_height": 1440,
+    "input_width": 960,
+    "content_height": 540,
+    "input_height": 544,
+    "stride": 8,
+    "num_outputs": 5,
+    "size_logit_min": -8.0,
+    "size_logit_max": 0.0,
+    "lambda_obj": 1.0,
+    "lambda_center": 5.0,
+    "lambda_size": 2.0
+  },
+  "input_resolution": [
+    960,
+    544
+  ],
+  "stride": 8,
+  "loss_config": {
+    "lambda_obj": 1.0,
+    "lambda_center": 5.0,
+    "lambda_size": 2.0
+  },
+  "optimizer": "AdamW",
+  "selected_device": "cuda",
+  "cuda_gpu": "NVIDIA GeForce GTX 1660 SUPER",
+  "trainable_parameters": 3242589,
+  "split_grouping": {
+    "available": true,
+    "path": "data\\splits\\split_manifest.csv",
+    "image_counts": {
+      "test": 459,
+      "train": 1696,
+      "val": 245
+    },
+    "capture_pairs": {
+      "test": [
+        "12_13",
+        "2_3"
+      ],
+      "train": [
+        "0_1",
+        "10_11",
+        "14_15",
+        "16_17",
+        "18_19",
+        "4_5",
+        "6_7"
+      ],
+      "val": [
+        "8_9"
+      ]
+    }
+  },
+  "best_checkpoint_metric": "val_map50_95"
+}

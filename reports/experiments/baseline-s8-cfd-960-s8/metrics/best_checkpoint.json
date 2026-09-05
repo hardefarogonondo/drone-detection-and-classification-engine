@@ -1,0 +1,6 @@
+{
+  "metric_name": "val_map50_95",
+  "best_metric": 0.4791892207620549,
+  "best_epoch": 19,
+  "model_path": "models\\checkpoints\\baseline-s8-cfd-960-s8\\best.pt"
+}
