@@ -1,0 +1,222 @@
+[
+  {
+    "threshold": 0.999,
+    "precision": 0.9611231101511879,
+    "recall": 0.9081632653061225,
+    "f1": 0.9338929695697796,
+    "true_positives": 445.0,
+    "false_positives": 18.0,
+    "false_negatives": 45.0,
+    "predictions": 463.0,
+    "predictions_per_image": 1.889795918367347
+  },
+  {
+    "threshold": 0.99905,
+    "precision": 0.9631236442516269,
+    "recall": 0.9061224489795918,
+    "f1": 0.9337539432176656,
+    "true_positives": 444.0,
+    "false_positives": 17.0,
+    "false_negatives": 46.0,
+    "predictions": 461.0,
+    "predictions_per_image": 1.8816326530612244
+  },
+  {
+    "threshold": 0.9991,
+    "precision": 0.962800875273523,
+    "recall": 0.8979591836734694,
+    "f1": 0.9292502639915522,
+    "true_positives": 440.0,
+    "false_positives": 17.0,
+    "false_negatives": 50.0,
+    "predictions": 457.0,
+    "predictions_per_image": 1.8653061224489795
+  },
+  {
+    "threshold": 0.99915,
+    "precision": 0.962800875273523,
+    "recall": 0.8979591836734694,
+    "f1": 0.9292502639915522,
+    "true_positives": 440.0,
+    "false_positives": 17.0,
+    "false_negatives": 50.0,
+    "predictions": 457.0,
+    "predictions_per_image": 1.8653061224489795
+  },
+  {
+    "threshold": 0.9992,
+    "precision": 0.9627192982456141,
+    "recall": 0.8959183673469387,
+    "f1": 0.9281183932346723,
+    "true_positives": 439.0,
+    "false_positives": 17.0,
+    "false_negatives": 51.0,
+    "predictions": 456.0,
+    "predictions_per_image": 1.8612244897959183
+  },
+  {
+    "threshold": 0.99925,
+    "precision": 0.9626373626373627,
+    "recall": 0.8938775510204081,
+    "f1": 0.926984126984127,
+    "true_positives": 438.0,
+    "false_positives": 17.0,
+    "false_negatives": 52.0,
+    "predictions": 455.0,
+    "predictions_per_image": 1.8571428571428572
+  },
+  {
+    "threshold": 0.9993,
+    "precision": 0.9623893805309734,
+    "recall": 0.8877551020408163,
+    "f1": 0.9235668789808916,
+    "true_positives": 435.0,
+    "false_positives": 17.0,
+    "false_negatives": 55.0,
+    "predictions": 452.0,
+    "predictions_per_image": 1.8448979591836734
+  },
+  {
+    "threshold": 0.99935,
+    "precision": 0.9622222222222222,
+    "recall": 0.8836734693877552,
+    "f1": 0.9212765957446809,
+    "true_positives": 433.0,
+    "false_positives": 17.0,
+    "false_negatives": 57.0,
+    "predictions": 450.0,
+    "predictions_per_image": 1.836734693877551
+  },
+  {
+    "threshold": 0.9994,
+    "precision": 0.9642058165548099,
+    "recall": 0.8795918367346939,
+    "f1": 0.919957310565635,
+    "true_positives": 431.0,
+    "false_positives": 16.0,
+    "false_negatives": 59.0,
+    "predictions": 447.0,
+    "predictions_per_image": 1.8244897959183672
+  },
+  {
+    "threshold": 0.99945,
+    "precision": 0.9660633484162896,
+    "recall": 0.8714285714285714,
+    "f1": 0.9163090128755365,
+    "true_positives": 427.0,
+    "false_positives": 15.0,
+    "false_negatives": 63.0,
+    "predictions": 442.0,
+    "predictions_per_image": 1.8040816326530613
+  },
+  {
+    "threshold": 0.9995,
+    "precision": 0.9676674364896074,
+    "recall": 0.8551020408163266,
+    "f1": 0.9079089924160346,
+    "true_positives": 419.0,
+    "false_positives": 14.0,
+    "false_negatives": 71.0,
+    "predictions": 433.0,
+    "predictions_per_image": 1.7673469387755103
+  },
+  {
+    "threshold": 0.99955,
+    "precision": 0.969626168224299,
+    "recall": 0.8469387755102041,
+    "f1": 0.9041394335511983,
+    "true_positives": 415.0,
+    "false_positives": 13.0,
+    "false_negatives": 75.0,
+    "predictions": 428.0,
+    "predictions_per_image": 1.7469387755102042
+  },
+  {
+    "threshold": 0.9996,
+    "precision": 0.9693396226415094,
+    "recall": 0.8387755102040816,
+    "f1": 0.899343544857768,
+    "true_positives": 411.0,
+    "false_positives": 13.0,
+    "false_negatives": 79.0,
+    "predictions": 424.0,
+    "predictions_per_image": 1.7306122448979593
+  },
+  {
+    "threshold": 0.99965,
+    "precision": 0.972972972972973,
+    "recall": 0.8081632653061225,
+    "f1": 0.882943143812709,
+    "true_positives": 396.0,
+    "false_positives": 11.0,
+    "false_negatives": 94.0,
+    "predictions": 407.0,
+    "predictions_per_image": 1.6612244897959183
+  },
+  {
+    "threshold": 0.9997,
+    "precision": 0.9769230769230769,
+    "recall": 0.7775510204081633,
+    "f1": 0.865909090909091,
+    "true_positives": 381.0,
+    "false_positives": 9.0,
+    "false_negatives": 109.0,
+    "predictions": 390.0,
+    "predictions_per_image": 1.5918367346938775
+  },
+  {
+    "threshold": 0.99975,
+    "precision": 0.9806629834254144,
+    "recall": 0.7244897959183674,
+    "f1": 0.8333333333333334,
+    "true_positives": 355.0,
+    "false_positives": 7.0,
+    "false_negatives": 135.0,
+    "predictions": 362.0,
+    "predictions_per_image": 1.4775510204081632
+  },
+  {
+    "threshold": 0.9998,
+    "precision": 0.9788519637462235,
+    "recall": 0.6612244897959184,
+    "f1": 0.7892813641900122,
+    "true_positives": 324.0,
+    "false_positives": 7.0,
+    "false_negatives": 166.0,
+    "predictions": 331.0,
+    "predictions_per_image": 1.3510204081632653
+  },
+  {
+    "threshold": 0.99985,
+    "precision": 0.9781818181818182,
+    "recall": 0.5489795918367347,
+    "f1": 0.7032679738562092,
+    "true_positives": 269.0,
+    "false_positives": 6.0,
+    "false_negatives": 221.0,
+    "predictions": 275.0,
+    "predictions_per_image": 1.1224489795918366
+  },
+  {
+    "threshold": 0.9999,
+    "precision": 0.981042654028436,
+    "recall": 0.42244897959183675,
+    "f1": 0.5905848787446506,
+    "true_positives": 207.0,
+    "false_positives": 4.0,
+    "false_negatives": 283.0,
+    "predictions": 211.0,
+    "predictions_per_image": 0.8612244897959184
+  },
+  {
+    "threshold": 0.99995,
+    "precision": 0.9900990099009901,
+    "recall": 0.20408163265306123,
+    "f1": 0.338409475465313,
+    "true_positives": 100.0,
+    "false_positives": 1.0,
+    "false_negatives": 390.0,
+    "predictions": 101.0,
+    "predictions_per_image": 0.4122448979591837
+  }
+]
