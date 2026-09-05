@@ -6,6 +6,7 @@ import json
 import sys
 import time
 import traceback
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +14,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
-from src.backend.config.detector_config import DEFAULT_DETECTOR_CONFIG
+from src.backend.config.detector_config import DEFAULT_DETECTOR_CONFIG, DetectorConfig
 from src.backend.config.settings import AppConfig, load_dotenv, select_device
 from src.backend.data.loaders import build_detection_loader, summarize_loader_settings
 from src.backend.data.targets import decode_target_map
@@ -32,6 +33,8 @@ from src.backend.utils.telemetry import (
     reset_cuda_peak_memory,
     synchronize_if_cuda,
 )
+
+LOSS_KEYS = ["total", "objectness", "center", "size", "iou"]
 
 
 def _initialize_size_bias_from_train(model: S8CFD, train_loader: DataLoader) -> None:
@@ -78,18 +81,28 @@ def _write_history(path: Path, history: list[dict[str, Any]]) -> None:
             writer.writerows(history)
 
 
+def _runtime_detector_config(config: AppConfig) -> DetectorConfig:
+    return replace(DEFAULT_DETECTOR_CONFIG, lambda_iou=config.iou_loss_weight)
+
+
+def _loss_config_dict(detector_config: DetectorConfig) -> dict[str, float]:
+    return {
+        "lambda_obj": detector_config.lambda_obj,
+        "lambda_center": detector_config.lambda_center,
+        "lambda_size": detector_config.lambda_size,
+        "lambda_iou": detector_config.lambda_iou,
+    }
+
+
 def _run_metadata(config: AppConfig, device: torch.device, model: S8CFD | None = None) -> dict[str, Any]:
+    detector_config = _runtime_detector_config(config)
     return {
         **config.as_log_dict(),
-        "detector_config": DEFAULT_DETECTOR_CONFIG.__dict__,
+        "detector_config": detector_config.__dict__,
         "model_name": config.model_name,
-        "input_resolution": [DEFAULT_DETECTOR_CONFIG.input_width, DEFAULT_DETECTOR_CONFIG.input_height],
-        "stride": DEFAULT_DETECTOR_CONFIG.stride,
-        "loss_config": {
-            "lambda_obj": DEFAULT_DETECTOR_CONFIG.lambda_obj,
-            "lambda_center": DEFAULT_DETECTOR_CONFIG.lambda_center,
-            "lambda_size": DEFAULT_DETECTOR_CONFIG.lambda_size,
-        },
+        "input_resolution": [detector_config.input_width, detector_config.input_height],
+        "stride": detector_config.stride,
+        "loss_config": _loss_config_dict(detector_config),
         "optimizer": "AdamW",
         "selected_device": str(device),
         "cuda_gpu": cuda_device_name(device),
@@ -121,16 +134,18 @@ def _checkpoint_metadata(
     best_metric_value: float,
     best_epoch: int | None,
 ) -> dict[str, Any]:
+    detector_config = _runtime_detector_config(config)
     return {
         "checkpoint_kind": checkpoint_kind,
         "run_name": config.run_name,
         "model_name": config.model_name,
         "parameter_count": count_trainable_parameters(model),
-        "input_resolution": [DEFAULT_DETECTOR_CONFIG.input_width, DEFAULT_DETECTOR_CONFIG.input_height],
-        "stride": DEFAULT_DETECTOR_CONFIG.stride,
+        "input_resolution": [detector_config.input_width, detector_config.input_height],
+        "stride": detector_config.stride,
         "optimizer": _optimizer_metadata(optimizer),
         "seed": config.seed,
         "training_config": config.as_log_dict(),
+        "loss_config": _loss_config_dict(detector_config),
         "selected_metric": metric_name,
         "current_metric_value": current_metric_value,
         "best_metric_value": best_metric_value,
@@ -160,7 +175,8 @@ def _evaluate(model: S8CFD, loader: DataLoader, device: torch.device, config: Ap
     pred_scores_by_image: list[torch.Tensor] = []
     gt_boxes_by_image: list[torch.Tensor] = []
     losses = []
-    criterion = S8CFDLoss(DEFAULT_DETECTOR_CONFIG)
+    detector_config = _runtime_detector_config(config)
+    criterion = S8CFDLoss(detector_config)
     diagnostics = {
         "raw_predictions": 0,
         "valid_predictions": 0,
@@ -202,6 +218,7 @@ def _evaluate(model: S8CFD, loader: DataLoader, device: torch.device, config: Ap
                 obj=f"{loss_dict['objectness']:.4f}",
                 center=f"{loss_dict['center']:.4f}",
                 size=f"{loss_dict['size']:.4f}",
+                iou=f"{loss_dict['iou']:.4f}",
             )
     synchronize_if_cuda(device)
     duration = time.time() - start
@@ -214,7 +231,7 @@ def _evaluate(model: S8CFD, loader: DataLoader, device: torch.device, config: Ap
     )
     mean_losses = {
         f"val_{key}": float(sum(item[key] for item in losses) / max(len(losses), 1))
-        for key in ["total", "objectness", "center", "size"]
+        for key in LOSS_KEYS
     }
     return {
         **mean_losses,
@@ -264,9 +281,10 @@ def train(config: AppConfig) -> dict[str, Any]:
 
     train_loader = build_detection_loader("train", config, device, shuffle=True, allow_test=False)
     val_loader = build_detection_loader("val", config, device, shuffle=False, allow_test=False)
-    model = S8CFD(DEFAULT_DETECTOR_CONFIG).to(device)
+    detector_config = _runtime_detector_config(config)
+    model = S8CFD(detector_config).to(device)
     _initialize_size_bias_from_train(model, train_loader)
-    criterion = S8CFDLoss(DEFAULT_DETECTOR_CONFIG)
+    criterion = S8CFDLoss(detector_config)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
     write_json(run_dir / "config.json", _run_metadata(config, device, model))
 
@@ -329,13 +347,14 @@ def train(config: AppConfig) -> dict[str, Any]:
                 obj=f"{loss_dict['objectness']:.4f}",
                 center=f"{loss_dict['center']:.4f}",
                 size=f"{loss_dict['size']:.4f}",
+                iou=f"{loss_dict['iou']:.4f}",
             )
 
         synchronize_if_cuda(device)
         train_duration = time.time() - train_start
         train_metrics = {
             f"train_{key}": float(sum(item[key] for item in batch_losses) / max(len(batch_losses), 1))
-            for key in ["total", "objectness", "center", "size"]
+            for key in LOSS_KEYS
         }
         val_metrics = _evaluate(model, val_loader, device, config, epoch=epoch)
         synchronize_if_cuda(device)

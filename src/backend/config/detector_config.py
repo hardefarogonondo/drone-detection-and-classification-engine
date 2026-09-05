@@ -19,6 +19,7 @@ class DetectorConfig:
     lambda_obj: float = 1.0
     lambda_center: float = 5.0
     lambda_size: float = 2.0
+    lambda_iou: float = 0.0
 
     @property
     def pad_top(self) -> float:

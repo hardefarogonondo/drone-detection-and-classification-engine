@@ -73,6 +73,7 @@ class AppConfig:
     batch_size: int = 2
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
+    iou_loss_weight: float = 0.0
     num_workers: int = 0
     pin_memory: str = "auto"
     persistent_workers: str = "auto"
@@ -123,6 +124,7 @@ class AppConfig:
             batch_size=_int("BATCH_SIZE", cls.batch_size),
             learning_rate=_float("LEARNING_RATE", cls.learning_rate),
             weight_decay=_float("WEIGHT_DECAY", cls.weight_decay),
+            iou_loss_weight=_float("IOU_LOSS_WEIGHT", cls.iou_loss_weight),
             num_workers=_int("NUM_WORKERS", cls.num_workers),
             pin_memory=os.getenv("PIN_MEMORY", cls.pin_memory).strip().lower(),
             persistent_workers=os.getenv("PERSISTENT_WORKERS", cls.persistent_workers).strip().lower(),
@@ -168,6 +170,8 @@ class AppConfig:
             raise ValueError("LEARNING_RATE must be positive.")
         if self.weight_decay < 0:
             raise ValueError("WEIGHT_DECAY must be >= 0.")
+        if self.iou_loss_weight < 0:
+            raise ValueError("IOU_LOSS_WEIGHT must be >= 0.")
         if self.num_workers < 0:
             raise ValueError("NUM_WORKERS must be >= 0.")
         if self.pin_memory not in {"auto", "true", "false"}:

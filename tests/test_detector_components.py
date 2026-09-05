@@ -11,7 +11,13 @@ from src.backend.data.preprocessing import CoordinateTransform
 from src.backend.data.targets import decode_prediction_map, decode_target_map, encode_anchor_free_targets
 from src.backend.models.boxes import box_iou_xyxy, nms_xyxy, xywh_to_xyxy
 from src.backend.models.inference import postprocess_predictions
-from src.backend.models.losses import S8CFDLoss
+from src.backend.models.losses import (
+    S8CFDLoss,
+    aligned_box_iou_xyxy,
+    decode_positive_prediction_boxes,
+    decode_positive_target_boxes,
+    iou_loss_for_positive_predictions,
+)
 from src.backend.models.metrics import (
     average_precision,
     evaluate_at_confidence_threshold,
@@ -20,6 +26,33 @@ from src.backend.models.metrics import (
 )
 from src.backend.models.s8_cfd import S8CFD
 from src.backend.models.training_utils import finite_gradients
+
+
+def _tiny_iou_config(lambda_iou: float = 0.0) -> DetectorConfig:
+    return DetectorConfig(input_width=16, content_height=16, input_height=16, stride=8, lambda_iou=lambda_iou)
+
+
+def _prediction_target_pair(
+    target_xywh: torch.Tensor,
+    pred_xywh: torch.Tensor,
+    config: DetectorConfig,
+    *,
+    requires_grad: bool = False,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    encoded = encode_anchor_free_targets(target_xywh.unsqueeze(0), config)
+    predictions = torch.zeros((1, config.num_outputs, config.grid_height, config.grid_width), dtype=torch.float32)
+    cell_y, cell_x = encoded.positive_mask.nonzero(as_tuple=False)[0].tolist()
+    offset_x = pred_xywh[0] * config.grid_width - cell_x
+    offset_y = pred_xywh[1] * config.grid_height - cell_y
+    assert 0.0 < float(offset_x) < 1.0
+    assert 0.0 < float(offset_y) < 1.0
+    predictions[0, 1, cell_y, cell_x] = torch.logit(offset_x)
+    predictions[0, 2, cell_y, cell_x] = torch.logit(offset_y)
+    predictions[0, 3, cell_y, cell_x] = torch.log(pred_xywh[2])
+    predictions[0, 4, cell_y, cell_x] = torch.log(pred_xywh[3])
+    if requires_grad:
+        predictions.requires_grad_(True)
+    return predictions, encoded.target.unsqueeze(0), encoded.positive_mask.unsqueeze(0)
 
 
 def test_resize_padding_coordinate_transform() -> None:
@@ -88,6 +121,114 @@ def test_iou_identical_disjoint_and_partial() -> None:
     partial = torch.tensor([[0.5, 0.5, 1.5, 1.5]])
     expected = torch.tensor([[0.25 / 1.75]])
     assert torch.allclose(box_iou_xyxy(box, partial), expected, atol=1e-6)
+
+
+def test_positive_iou_loss_identical_boxes_is_zero() -> None:
+    config = _tiny_iou_config(lambda_iou=1.0)
+    box = torch.tensor([0.25, 0.25, 0.2, 0.2], dtype=torch.float32)
+    predictions, targets, positive_mask = _prediction_target_pair(box, box, config)
+
+    pred_boxes = decode_positive_prediction_boxes(predictions, positive_mask, config)
+    target_boxes = decode_positive_target_boxes(targets, positive_mask, config)
+    iou = aligned_box_iou_xyxy(pred_boxes, target_boxes)
+    loss = iou_loss_for_positive_predictions(predictions, targets, positive_mask, config)
+
+    assert torch.allclose(iou, torch.tensor([1.0]), atol=1e-6)
+    assert torch.allclose(loss, torch.tensor(0.0), atol=1e-6)
+
+
+def test_positive_iou_loss_non_overlapping_boxes_is_one() -> None:
+    config = _tiny_iou_config(lambda_iou=1.0)
+    target_box = torch.tensor([0.25, 0.25, 0.1, 0.1], dtype=torch.float32)
+    pred_box = torch.tensor([0.45, 0.25, 0.1, 0.1], dtype=torch.float32)
+    predictions, targets, positive_mask = _prediction_target_pair(target_box, pred_box, config)
+
+    iou = aligned_box_iou_xyxy(
+        decode_positive_prediction_boxes(predictions, positive_mask, config),
+        decode_positive_target_boxes(targets, positive_mask, config),
+    )
+    loss = iou_loss_for_positive_predictions(predictions, targets, positive_mask, config)
+
+    assert torch.allclose(iou, torch.tensor([0.0]), atol=1e-6)
+    assert torch.allclose(loss, torch.tensor(1.0), atol=1e-6)
+
+
+def test_positive_iou_loss_partial_overlap_matches_expected_value() -> None:
+    config = _tiny_iou_config(lambda_iou=1.0)
+    target_box = torch.tensor([0.25, 0.25, 0.5, 0.5], dtype=torch.float32)
+    pred_box = torch.tensor([0.375, 0.25, 0.5, 0.5], dtype=torch.float32)
+    predictions, targets, positive_mask = _prediction_target_pair(target_box, pred_box, config)
+
+    iou = aligned_box_iou_xyxy(
+        decode_positive_prediction_boxes(predictions, positive_mask, config),
+        decode_positive_target_boxes(targets, positive_mask, config),
+    )
+    loss = iou_loss_for_positive_predictions(predictions, targets, positive_mask, config)
+
+    assert torch.allclose(iou, torch.tensor([0.6]), atol=1e-6)
+    assert torch.allclose(loss, torch.tensor(0.4), atol=1e-6)
+
+
+def test_positive_iou_loss_has_finite_gradients() -> None:
+    config = _tiny_iou_config(lambda_iou=1.0)
+    target_box = torch.tensor([0.25, 0.25, 0.5, 0.5], dtype=torch.float32)
+    pred_box = torch.tensor([0.375, 0.25, 0.5, 0.5], dtype=torch.float32)
+    predictions, targets, positive_mask = _prediction_target_pair(target_box, pred_box, config, requires_grad=True)
+
+    loss = iou_loss_for_positive_predictions(predictions, targets, positive_mask, config)
+    loss.backward()
+
+    assert torch.isfinite(loss)
+    assert predictions.grad is not None
+    assert torch.isfinite(predictions.grad).all()
+
+
+def test_positive_iou_loss_ignores_negative_cells() -> None:
+    config = _tiny_iou_config(lambda_iou=1.0)
+    target_box = torch.tensor([0.25, 0.25, 0.5, 0.5], dtype=torch.float32)
+    pred_box = torch.tensor([0.375, 0.25, 0.5, 0.5], dtype=torch.float32)
+    predictions, targets, positive_mask = _prediction_target_pair(target_box, pred_box, config)
+    baseline_loss = iou_loss_for_positive_predictions(predictions, targets, positive_mask, config)
+
+    changed_predictions = predictions.clone()
+    changed_predictions[0, 1:, 1, 1] = torch.tensor([20.0, -20.0, -8.0, -8.0])
+    changed_loss = iou_loss_for_positive_predictions(changed_predictions, targets, positive_mask, config)
+
+    assert torch.allclose(changed_loss, baseline_loss, atol=1e-7)
+
+
+def test_iou_loss_weight_zero_preserves_baseline_total_loss() -> None:
+    config = _tiny_iou_config(lambda_iou=0.0)
+    target_box = torch.tensor([0.25, 0.25, 0.5, 0.5], dtype=torch.float32)
+    pred_box = torch.tensor([0.375, 0.25, 0.5, 0.5], dtype=torch.float32)
+    predictions, targets, positive_mask = _prediction_target_pair(target_box, pred_box, config)
+
+    loss = S8CFDLoss(config)(predictions, targets, positive_mask)
+    expected_total = (
+        config.lambda_obj * loss.objectness
+        + config.lambda_center * loss.center
+        + config.lambda_size * loss.size
+    )
+
+    assert torch.allclose(loss.iou, torch.tensor(0.0), atol=0.0)
+    assert torch.equal(loss.total, expected_total)
+
+
+def test_iou_loss_weight_positive_contributes_to_total_loss() -> None:
+    config = _tiny_iou_config(lambda_iou=1.25)
+    target_box = torch.tensor([0.25, 0.25, 0.5, 0.5], dtype=torch.float32)
+    pred_box = torch.tensor([0.375, 0.25, 0.5, 0.5], dtype=torch.float32)
+    predictions, targets, positive_mask = _prediction_target_pair(target_box, pred_box, config)
+
+    loss = S8CFDLoss(config)(predictions, targets, positive_mask)
+    baseline_total = (
+        config.lambda_obj * loss.objectness
+        + config.lambda_center * loss.center
+        + config.lambda_size * loss.size
+    )
+
+    assert torch.allclose(loss.iou, torch.tensor(0.4), atol=1e-6)
+    assert torch.allclose(loss.total, baseline_total + config.lambda_iou * loss.iou, atol=1e-6)
 
 
 def test_nms_suppression_and_retention() -> None:
