@@ -283,10 +283,9 @@ reports/final/                   single sealed-test evaluation artifacts
 reports/figures/                 generated report figures
 ```
 
-W&B logging is controlled by `WANDB_ENABLED`. W&B project URL: TODO add the
-shareable project URL if it is made available to evaluators.
+W&B logging is controlled by `WANDB_ENABLED`. W&B project URL:
+https://wandb.ai/hardefarogonondo-venturesea/drone-detection-and-classification-engine
 
 ## Paper
 
-Future IEEE-format PDF: TODO add final report PDF path when the manuscript is
-exported.
+Final IEEE-format PDF: [paper/main.pdf](paper/main.pdf)
