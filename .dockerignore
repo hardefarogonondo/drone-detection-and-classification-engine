@@ -11,4 +11,7 @@ models/checkpoints/
 reports/predictions/
 reports/runs/
 reports/figures/
+reports/experiments/
+reports/final/
+models/weights/
 notebooks/

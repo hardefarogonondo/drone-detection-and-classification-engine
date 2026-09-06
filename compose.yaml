@@ -6,13 +6,14 @@ services:
     environment:
       RETRAIN: ${RETRAIN:-false}
       RUN_NAME: ${RUN_NAME:-s8-cfd-dev}
-      DEVICE: ${DEVICE:-auto}
+      DEVICE: ${DEVICE:-cpu}
       MODEL_NAME: ${MODEL_NAME:-s8_cfd}
       MODEL_PATH: ${MODEL_PATH:-}
       TRAIN_EPOCHS: ${TRAIN_EPOCHS:-50}
       BATCH_SIZE: ${BATCH_SIZE:-2}
       LEARNING_RATE: ${LEARNING_RATE:-0.001}
       WEIGHT_DECAY: ${WEIGHT_DECAY:-0.0001}
+      IOU_LOSS_WEIGHT: ${IOU_LOSS_WEIGHT:-0.0}
       NUM_WORKERS: ${NUM_WORKERS:-0}
       PIN_MEMORY: ${PIN_MEMORY:-auto}
       PERSISTENT_WORKERS: ${PERSISTENT_WORKERS:-auto}
@@ -47,7 +48,7 @@ services:
       trainer:
         condition: service_completed_successfully
     environment:
-      DEVICE: ${DEVICE:-auto}
+      DEVICE: ${DEVICE:-cpu}
       RUN_NAME: ${RUN_NAME:-s8-cfd-dev}
       MODEL_NAME: ${MODEL_NAME:-s8_cfd}
       MODEL_PATH: ${MODEL_PATH:-}
