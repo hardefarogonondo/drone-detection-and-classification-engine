@@ -1,0 +1,6 @@
+{
+  "metric_name": "val_map50_95",
+  "best_metric": 0.47839726345264355,
+  "best_epoch": 17,
+  "model_path": "models\\checkpoints\\ablation-iou1-s8-cfd-960-s8\\best.pt"
+}
