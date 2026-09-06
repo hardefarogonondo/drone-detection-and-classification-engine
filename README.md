@@ -286,6 +286,44 @@ reports/figures/                 generated report figures
 W&B logging is controlled by `WANDB_ENABLED`. W&B project URL:
 https://wandb.ai/hardefarogonondo-venturesea/drone-detection-and-classification-engine
 
+## Future Work
+
+The submitted pipeline is frozen and complete for this assessment. The items
+below are future extensions rather than unfinished submission requirements, and
+new model-selection experiments were not continued after the sealed-test protocol
+was frozen.
+
+### Broader Controlled Experiments
+
+Future controlled ablations could evaluate learning-rate scheduling,
+GIoU/DIoU/CIoU, lower IoU-loss weights, 1280x720 inputs, stride-4 prediction,
+S8-only versus S8/S16/S32 fusion, focal-loss comparison, and systematic
+hyperparameter sweeps.
+
+### Robustness
+
+Multi-seed evaluation with mean/std reporting would better quantify run-to-run
+variance for the baseline and any future ablations.
+
+### Additional Evaluation
+
+Further artifact-only analyses could include per-scene, weather, raw/augmented,
+capture-pair, object-size, IoU/error-distribution, FP/FN taxonomy, and
+latency/throughput breakdowns.
+
+### Multi-GPU Training
+
+DistributedDataParallel was intentionally not implemented because the available
+training machine had a single NVIDIA GTX 1660 SUPER, so a multi-GPU
+implementation could not be meaningfully validated. This was an optional bonus,
+not a failed requirement.
+
+### Engineering Extensions
+
+Useful engineering follow-ups include CI, Docker CI, ONNX/TorchScript export,
+quantization, profiling, checksum/version manifests, configuration files,
+serving/video inference, and experiment/release artifact automation.
+
 ## Paper
 
 Final IEEE-format PDF: [paper/main.pdf](paper/main.pdf)
