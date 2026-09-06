@@ -12,19 +12,17 @@
 
 \title{S8-CFD: A Lightweight From-Scratch Context-Fused Detector for Small Drone Detection}
 
-\author{\IEEEauthorblockN{Hardefa Rogonondo}
-\IEEEauthorblockA{Drone Detection and Classification Engine\\
-Take-Home Computer Vision Assessment}}
+\author{\IEEEauthorblockN{Hardefa Rogonondo}}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
 This report presents S8-CFD, a lightweight single-class drone detector designed
-and implemented from scratch in PyTorch. The task emphasizes small-object
-localization: all source images are 2560$\times$1440, contain annotated drones,
-and are grouped to reduce leakage from related sequential and raw/augmented
-samples. S8-CFD uses a stride-8 anchor-free prediction grid with S8/S16/S32
+and implemented from scratch in PyTorch. The dataset and problem setting
+emphasize small-object localization: all source images are 2560$\times$1440,
+contain annotated drones, and are grouped to reduce leakage from related
+sequential and raw/augmented samples. S8-CFD uses a stride-8 anchor-free prediction grid with S8/S16/S32
 context fusion, GroupNorm, custom decoding, and custom non-maximum suppression.
 The final baseline obtains validation AP50/AP75/mAP50-95 of
 0.9376/0.4038/0.4792 and sealed-test AP50/AP75/mAP50-95 of
@@ -38,10 +36,9 @@ improve AP75 or the predetermined validation mAP50-95 selection metric.
 Small drones are visually compact and often appear against sky, buildings, or
 natural scenery. This makes coarse detection easier than precise localization:
 the frozen baseline has high AP50 but much lower AP75, motivating a careful
-localization-focused analysis. The project constraint is also methodological:
-the detector must be vanilla and implemented from scratch, without pretrained
-detector weights, YOLO/Ultralytics, torchvision detector models, timm backbones,
-or imported detection architectures.
+localization-focused analysis. The implementation is intentionally developed
+from scratch without pretrained detector weights, YOLO/Ultralytics, torchvision
+detector models, timm backbones, or imported detection architectures.
 
 The resulting model, S8-CFD, is a 3,242,589-parameter anchor-free detector. It
 uses stride-8 small-object prediction and fuses S8, S16, and S32 feature context
@@ -105,7 +102,7 @@ from S8, S16, and S32 feature levels. The detection head is anchor-free: decoded
 centers use sigmoid-normalized cell offsets, sizes use exponentiated log
 width/height, and boxes are converted to normalized \texttt{xyxy} coordinates.
 NMS is implemented in PyTorch tensor operations rather than through an external
-library.
+library. Figure~\ref{fig:architecture} summarizes the implemented architecture.
 
 The baseline objective is
 \begin{equation}
@@ -127,14 +124,14 @@ No GIoU, DIoU, or CIoU variant is used in this ablation.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{detector_resolution_stride_analysis.pdf}
-\caption{Resolution and stride analysis used when choosing the 960$\times$544
-canvas and stride-8 prediction grid for small objects.}
-\label{fig:stride}
+\includegraphics[width=\columnwidth]{s8_cfd_architecture.pdf}
+\caption{S8-CFD architecture. Features from strides 8, 16, and 32 are projected
+and fused at stride 8 before the anchor-free detection head.}
+\label{fig:architecture}
 \end{figure}
 
 \section{Experiments and Results}
-The official baseline configuration is fixed for 20 epochs, batch size 2,
+The reference baseline configuration is fixed for 20 epochs, batch size 2,
 learning rate 0.001, weight decay 0.0001, no learning-rate scheduler, and seed
 42. Training used Windows CUDA on an NVIDIA GTX 1660 SUPER with
 \texttt{NUM\_WORKERS}=4. W\&B tracking was used for experiment logging, while
@@ -196,8 +193,8 @@ definite overfitting.
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=0.66\textwidth]{final_evaluation_qualitative_examples.pdf}
-\caption{Committed representative sealed-test predictions. The 12-image subset
+\includegraphics[width=0.66\textwidth]{final_evaluation_qualitative_examples_paper.pdf}
+\caption{Representative sealed-test predictions. The 12-image subset
 was curated for coverage across raw/augmented, city/forest/lake, and
 sunny/foggy conditions, not for correctness or confidence.}
 \label{fig:qual}

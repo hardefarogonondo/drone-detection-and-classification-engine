@@ -1,7 +1,7 @@
 # S8-CFD: From-Scratch Drone Detection
 
 Custom lightweight anchor-free drone detector implemented from scratch in
-PyTorch for a take-home computer vision assessment.
+PyTorch for a small-drone detection research and engineering project.
 
 The detector implementation intentionally avoids pretrained detector weights,
 YOLO/Ultralytics, torchvision detector models, timm backbones, external detector
@@ -20,7 +20,7 @@ inside this repository from primitive PyTorch tensor operations.
 - validation-only model selection and sealed test protocol
 - W&B tracking support; logging is controlled by `WANDB_ENABLED`
 - CUDA/MPS/CPU local runtime selection
-- CPU-only Docker support for evaluator smoke runs
+- CPU-only Docker support for reproducibility smoke runs
 
 ## Final Results
 
@@ -32,7 +32,7 @@ validation-selected threshold = 0.999
 ```
 
 The model and threshold were frozen before the single sealed-test evaluation.
-The submitted checkpoint is:
+The final checkpoint is:
 
 ```text
 models/weights/s8_cfd_final.pt
@@ -69,7 +69,7 @@ Important directories:
 ```text
 src/                  model, data, metric, and CLI implementation
 notebooks/            executed analysis notebooks
-models/weights/       submitted final model checkpoint
+models/weights/       final model checkpoint
 reports/experiments/  frozen validation experiment artifacts
 reports/final/        single sealed-test evaluation artifacts
 reports/figures/      publication-ready figures
@@ -174,7 +174,7 @@ PROGRESS=false \
 uv run drone-train
 ```
 
-## Official Baseline Configuration
+## Reference Baseline Configuration
 
 ```text
 epochs       20
@@ -186,7 +186,7 @@ scheduler    none
 seed         42
 ```
 
-The official Windows CUDA baseline training used `NUM_WORKERS=4`.
+The reference baseline training used Windows CUDA with `NUM_WORKERS=4`.
 
 ## IoU-Loss Ablation
 
@@ -256,7 +256,7 @@ docker compose run --rm --no-deps \
   trainer
 ```
 
-`docker compose up` is not the primary evaluator quickstart because the two
+`docker compose up` is not the primary reproducibility quickstart because the two
 services are chained. Use the explicit `docker compose run --rm --no-deps ...`
 commands above for targeted smoke checks.
 
@@ -277,7 +277,7 @@ commands above for targeted smoke checks.
 ## Artifacts
 
 ```text
-models/weights/s8_cfd_final.pt   submitted final checkpoint
+models/weights/s8_cfd_final.pt   final checkpoint
 reports/experiments/             frozen validation experiment artifacts
 reports/final/                   single sealed-test evaluation artifacts
 reports/figures/                 generated report figures
@@ -288,10 +288,10 @@ https://wandb.ai/hardefarogonondo-venturesea/drone-detection-and-classification-
 
 ## Future Work
 
-The submitted pipeline is frozen and complete for this assessment. The items
-below are future extensions rather than unfinished submission requirements, and
-new model-selection experiments were not continued after the sealed-test protocol
-was frozen.
+The reported pipeline is frozen at the documented experimental scope. The items
+below are future extensions rather than open work in the current release, and new
+model-selection experiments were not continued after the sealed-test protocol was
+frozen.
 
 ### Broader Controlled Experiments
 
@@ -315,8 +315,8 @@ latency/throughput breakdowns.
 
 DistributedDataParallel was intentionally not implemented because the available
 training machine had a single NVIDIA GTX 1660 SUPER, so a multi-GPU
-implementation could not be meaningfully validated. This was an optional bonus,
-not a failed requirement.
+implementation could not be meaningfully validated. Multi-GPU support remains
+outside the validated hardware scope for this release.
 
 ### Engineering Extensions
 

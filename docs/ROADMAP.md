@@ -1,42 +1,42 @@
-# Project Roadmap
+# Project Status and Future Scope
 
-This roadmap reflects the current state of the take-home assessment. The sealed
-test split remains off-limits until final evaluation.
+This document summarizes the frozen project state and future technical scope.
+The final model, validation-based model selection, and single sealed-test
+evaluation are complete. The sealed test split should remain represented only
+through the reported final artifacts and should not be reused for development
+decisions.
 
-## Done
+## Frozen Scope
 
-- Completed read-only dataset reconnaissance for `data/obj_det_base/`.
+- Completed dataset reconnaissance for `data/obj_det_base/`.
 - Frozen a capture-pair-aware train/validation/test split in `data/splits/`.
-- Formulated the first custom detector, S8-CFD, from primitive PyTorch modules.
+- Implemented S8-CFD as a custom detector from primitive PyTorch modules.
 - Implemented dataset loading, preprocessing, target encoding/decoding, model,
   loss, metrics, checkpoints, training CLI, and inference CLI.
-- Verified shape, loss, backward-pass, NMS, metric, and coordinate-transform
-  behavior with focused tests.
-- Ran a tiny train-only overfit sanity check on eight training images.
-- Ran validation-only inference smoke output behind the sealed-test guard.
+- Verified shape, loss, backward-pass, NMS, metric, checkpoint, and
+  coordinate-transform behavior with focused tests.
+- Completed the reference baseline, IoU-loss ablation, final model selection, and
+  sealed-test evaluation artifacts.
 
-## Current Guardrails
+## Reproducibility Conventions
 
-- Do not train a full baseline until the EDA/model-design review is accepted.
-- Do not run test-set inference unless explicitly approved for final evaluation.
-- Do not commit raw data, checkpoints, prediction renders, local `.env`, W&B
-  runtime files, or OS/editor metadata.
-- Keep `DEVICE=auto` behavior as CUDA, then Apple MPS, then CPU.
+- Validation data, not the sealed test split, is used for any future development
+  or model-selection decisions.
+- Raw data, local `.env`, W&B runtime files, and OS/editor metadata remain
+  outside version control.
+- `DEVICE=auto` resolves to CUDA, then Apple MPS, then CPU.
+- Docker execution remains CPU-only unless GPU container support is separately
+  implemented and validated.
 
-## Next EDA Steps
+## Future Scope
 
-- Review `notebooks/01_dataset_analysis.ipynb`, `02_split_strategy.ipynb`, and
-  `03_detector_formulation.ipynb` together before adding new notebooks.
-- Add a focused augmentation/resizing EDA pass for small-object visibility and
-  background diversity.
-- Define train/validation evaluation tables before running long experiments.
-- Decide whether S8-CFD needs multi-object collision handling beyond the current
-  one-center-per-cell target assignment after seeing validation errors.
-
-## Later Modeling Steps
-
-- Run a short baseline training job on the frozen train split only.
-- Evaluate on validation and inspect failure cases by object size, position,
-  background, and confidence threshold.
-- Tune the custom loss and post-processing thresholds against validation only.
-- Reserve the sealed test split for one final reported evaluation.
+- Broaden controlled experiments with learning-rate schedules, alternative
+  localization losses, focal loss, higher resolution, stride-4 prediction,
+  feature-fusion ablations, and systematic hyperparameter sweeps.
+- Add multi-seed evaluation with mean/std reporting.
+- Expand analysis by scene, weather, raw/augmented source, capture pair, object
+  size, localization error, false-positive/false-negative taxonomy, and
+  latency/throughput.
+- Consider engineering extensions such as CI, Docker CI, export formats,
+  profiling, checksum/version manifests, serving, video inference, and release
+  artifact automation.
